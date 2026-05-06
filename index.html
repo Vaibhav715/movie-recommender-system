@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+            background-color: #ffffff;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .header-banner {
+            background-color: #1a1f25;
+            color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        h1 { margin: 0; font-size: 24pt; color: #ffffff; }
+        h2 { 
+            color: #ff4b1f; 
+            border-bottom: 2px solid #eee; 
+            padding-bottom: 5px; 
+            margin-top: 25px;
+            font-size: 18pt;
+        }
+        h3 { color: #444; font-size: 14pt; margin-top: 20px; }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-left: 5px solid #ff4b1f;
+            overflow-x: auto;
+            border-radius: 0 5px 5px 0;
+        }
+        .feature-item {
+            margin-bottom: 10px;
+            padding-left: 20px;
+            position: relative;
+        }
+        .feature-item::before {
+            content: "•";
+            color: #ff4b1f;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+        .badge {
+            display: inline-block;
+            background: #e1e4e8;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 9pt;
+            margin-right: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-banner">
+        <h1>🎬 Movie Hub</h1>
+        <p>Smart Recommender & Trending Dashboard</p>
+    </div>
+
+    <p>A sophisticated content-based movie recommendation engine built with Python and Streamlit.</p>
+
+    <h2>🚀 Key Features</h2>
+    <div>
+        <div class="feature-item"><strong>Intelligent Recommendations:</strong> Cosine similarity based suggestions.</div>
+        <div class="feature-item"><strong>Live Trending Feed:</strong> Real-time TMDB API integration.</div>
+        <div class="feature-item"><strong>Immersive Visuals:</strong> Posters, trailers, and cast details.</div>
+        <div class="feature-item"><strong>User Watchlist:</strong> Save movies for later.</div>
+        <div class="feature-item"><strong>Modern UI:</strong> Clean dark-themed design.</div>
+    </div>
+
+    <h2>🛠️ Tech Stack</h2>
+    <div>
+        <span class="badge">Python</span>
+        <span class="badge">Streamlit</span>
+        <span class="badge">Pandas</span>
+        <span class="badge">Scikit-Learn</span>
+        <span class="badge">TMDB API</span>
+    </div>
+</body>
+</html>
