@@ -10,7 +10,6 @@ from urllib3.util.retry import Retry
 # ------------------------------------------------------
 # 1. Configuration & Session State
 # ------------------------------------------------------
-# Priority: Streamlit Secrets (Cloud), then the hardcoded key
 if "TMDB_API" in st.secrets:
     TMDB_API = st.secrets["TMDB_API"]
 else:
@@ -18,19 +17,17 @@ else:
 
 st.set_page_config(page_title="Movie Hub Pro", layout="wide")
 
-# Download logic to ensure the app works on deployment
+# Ensure similarity.pkl is downloaded
 file_id = "1C95mqxDDUNMVb0LAsgI_ReInIyd5qSBv"
 output = "similarity.pkl"
 
 if not os.path.exists(output):
     try:
-        # Using 'id' directly is the most stable way to bypass Google warnings
         gdown.download(id=file_id, output=output, quiet=False)
     except Exception as e:
-        st.error(f"Failed to download similarity matrix: {e}")
-        st.stop()
+        st.error(f"Download failed: {e}")
 
-# Initialize Session States for Persistence
+# Initialize Session States
 if 'wishlist' not in st.session_state:
     st.session_state.wishlist = []
 if 'last_recommendations' not in st.session_state:
@@ -48,7 +45,7 @@ def get_api_session():
 api_session = get_api_session()
 
 # ------------------------------------------------------
-# 2. Custom CSS (Re-Applied your exact styles)
+# 2. Custom CSS
 # ------------------------------------------------------
 st.markdown("""
 <style>
@@ -148,13 +145,22 @@ def fetch_trailer_id(movie_id):
 @st.cache_data
 def load_data():
     try:
+        if not os.path.exists("movie_dict.pkl") or not os.path.exists("similarity.pkl"):
+            return None, None
         m_dict = pickle.load(open("movie_dict.pkl", "rb"))
         sim = pickle.load(open("similarity.pkl", "rb"))
         return pd.DataFrame(m_dict), sim
-    except:
-        return pd.DataFrame(), None
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None, None
 
 movies_df, similarity = load_data()
+
+# GUARD CLAUSE: Stop app if data is missing to prevent KeyError
+if movies_df is None or "title" not in movies_df.columns:
+    st.error("Critical Error: Movie data (movie_dict.pkl or similarity.pkl) not found or corrupted.")
+    st.info("Ensure you have uploaded 'movie_dict.pkl' to your GitHub repository.")
+    st.stop()
 
 # ------------------------------------------------------
 # 4. App Navigation
@@ -164,12 +170,8 @@ page = st.sidebar.radio("Go to", ["Recommend Movies", "My Wishlist", "Trending T
 st.sidebar.divider()
 st.sidebar.write(f"📁 Saved Movies: **{len(st.session_state.wishlist)}**")
 
-# ------------------------------------------------------
-# PAGE: RECOMMENDATIONS (UI Fully Restored)
-# ------------------------------------------------------
 if page == "Recommend Movies":
     st.title("🎬 Movie Hub — Smart Recommender")
-    
     selected_movie_name = st.selectbox("Choose a movie", movies_df["title"].values)
 
     if st.button("✨ Get Recommendations"):
@@ -215,19 +217,15 @@ if page == "Recommend Movies":
                     st.markdown(f"<div class='cast-name'>{actor}</div>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-# ------------------------------------------------------
-# PAGE: WISHLIST
-# ------------------------------------------------------
 elif page == "My Wishlist":
     st.title("📁 Your Saved Movies")
     if not st.session_state.wishlist:
-        st.info("Your wishlist is empty. Add movies from the recommendations page!")
+        st.info("Your wishlist is empty.")
     else:
         for movie_name in st.session_state.wishlist:
             try:
                 m_id = movies_df[movies_df['title'] == movie_name].iloc[0].movie_id
                 m = fetch_movie_details(m_id)
-                
                 with st.container():
                     st.markdown(f"<div class='movie-container'>", unsafe_allow_html=True)
                     c1, c2 = st.columns([1, 2])
@@ -243,12 +241,9 @@ elif page == "My Wishlist":
                         st.markdown(genre_html, unsafe_allow_html=True)
                         st.write(m['overview'])
                     st.markdown("</div>", unsafe_allow_html=True)
-            except Exception:
-                st.warning(f"Could not load details for {movie_name}")
+            except:
+                continue
 
-# ------------------------------------------------------
-# PAGE: TRENDING
-# ------------------------------------------------------
 elif page == "Trending Today":
     st.title("🔥 Trending Movies Today")
     url = f"https://api.themoviedb.org/3/trending/movie/day?api_key={TMDB_API}"
@@ -260,14 +255,12 @@ elif page == "Trending Today":
         t_id = fetch_trailer_id(m_id)
         st.markdown(f"## 🎞 {info['title']}")
         c1, c2 = st.columns([1, 2])
-        with c1:
-            st.image(info['poster'])
+        with c1: st.image(info['poster'])
         with c2:
             st.markdown(f"**⭐ Rating:** {info['rating']}")
             st.markdown(f"**🎭 Genres:** {', '.join(info['genres'])}")
             st.markdown(f"**📝 Overview:** {info['overview']}")
-            if t_id:
-                st.video(f"https://www.youtube.com/watch?v={t_id}")
+            if t_id: st.video(f"https://www.youtube.com/watch?v={t_id}")
         st.markdown("### 👥 Top Cast")
         cast_cols = st.columns(5)
         for i, (actor, pic) in enumerate(cast):
