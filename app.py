@@ -10,14 +10,13 @@ from urllib3.util.retry import Retry
 # ------------------------------------------------------
 # 0. Secure Config
 # ------------------------------------------------------
-# Priority: Streamlit Secrets (Cloud), then Environment Variables (Local)
 if "TMDB_API" in st.secrets:
     TMDB_API = st.secrets["TMDB_API"]
 else:
     TMDB_API = os.getenv("TMDB_API")
 
 if not TMDB_API:
-    st.error("TMDB_API key not found. Please set it in Streamlit Secrets or Environment Variables.")
+    st.error("TMDB_API key not found. Set environment variable in Secrets.")
     st.stop()
 
 st.set_page_config(page_title="Movie Hub Pro", layout="wide")
@@ -29,12 +28,11 @@ file_id = "1C95mqxDDUNMVb0LAsgI_ReInIyd5qSBv"
 output = "similarity.pkl"
 
 if not os.path.exists(output):
-    # Using 'id' directly in gdown is the most stable way to bypass 
-    # Google Drive's "Large File" warning without changing your logic structure.
     try:
+        # Fixed to use 'id' to bypass Drive's large-file warning
         gdown.download(id=file_id, output=output, quiet=False)
-    except Exception as e:
-        st.error(f"Download failed. Please ensure the Google Drive file is shared as 'Anyone with the link'. Error: {e}")
+    except:
+        st.error("Failed to download similarity matrix. Check link permissions.")
         st.stop()
 
 # ------------------------------------------------------
@@ -61,7 +59,7 @@ def get_api_session():
 api_session = get_api_session()
 
 # ------------------------------------------------------
-# 4. CSS
+# 4. CSS (Your Original Styles)
 # ------------------------------------------------------
 st.markdown("""
 <style>
@@ -126,20 +124,12 @@ def fetch_movie_details(movie_id):
 def fetch_cast(movie_id):
     url = f"https://api.themoviedb.org/3/movie/{movie_id}/credits?api_key={TMDB_API}"
     data = fetch_json(url)
-
-    return [
-        (
-            c.get("name"),
-            f"https://image.tmdb.org/t/p/w185{c.get('profile_path')}"
-            if c.get("profile_path") else "https://via.placeholder.com/185"
-        )
-        for c in data.get("cast", [])[:5]
-    ]
+    return [(c.get("name"), f"https://image.tmdb.org/t/p/w185{c.get('profile_path')}" if c.get("profile_path") else "https://via.placeholder.com/185")
+            for c in data.get("cast", [])[:5]]
 
 def fetch_trailer_id(movie_id):
     url = f"https://api.themoviedb.org/3/movie/{movie_id}/videos?api_key={TMDB_API}"
     data = fetch_json(url)
-
     for v in data.get("results", []):
         if v.get("type") == "Trailer" and v.get("site") == "YouTube":
             return v.get("key")
@@ -163,7 +153,7 @@ movies_df, similarity = load_data()
 # 7. Guard Clause
 # ------------------------------------------------------
 if similarity is None or movies_df.empty:
-    st.error("Dataset or similarity matrix missing. Check your file paths or download logs.")
+    st.error("Dataset or similarity matrix missing.")
     st.stop()
 
 # ------------------------------------------------------
@@ -171,75 +161,44 @@ if similarity is None or movies_df.empty:
 # ------------------------------------------------------
 st.sidebar.title("🎬 Navigation")
 page = st.sidebar.radio("Go to", ["Recommend Movies", "My Wishlist", "Trending Today"])
-
 st.sidebar.write(f"📁 Wishlist: {len(st.session_state.wishlist)}")
 
 # ------------------------------------------------------
-# 9. RECOMMENDER PAGE
+# 9. RECOMMENDER PAGE (UI Restored)
 # ------------------------------------------------------
 if page == "Recommend Movies":
-
     st.title("🎬 Movie Hub Pro")
-
     selected_movie = st.selectbox("Choose a movie", movies_df["title"].values)
 
     if st.button("✨ Recommend"):
         idx = movies_df[movies_df["title"] == selected_movie].index[0]
-
-        distances = sorted(
-            list(enumerate(similarity[idx])),
-            reverse=True,
-            key=lambda x: x[1]
-        )[1:6]
-
+        distances = sorted(list(enumerate(similarity[idx])), reverse=True, key=lambda x: x[1])[1:6]
+        
         st.session_state.last_recommendations = []
-
         for i, _ in distances:
             m_id = movies_df.iloc[i].movie_id
-
             m = fetch_movie_details(m_id)
-            m["cast"] = fetch_cast(m_id)
-            m["trailer"] = fetch_trailer_id(m_id)
-
             st.session_state.last_recommendations.append(m)
 
     for m in st.session_state.last_recommendations:
         with st.container():
             st.markdown("<div class='movie-container'>", unsafe_allow_html=True)
-
             col1, col2 = st.columns([1, 2])
-
+            
             with col1:
                 st.image(m["poster"])
-
                 if m["title"] not in st.session_state.wishlist:
                     if st.button("➕ Wishlist", key=m["id"]):
                         st.session_state.wishlist.append(m["title"])
                         st.rerun()
                 else:
                     st.button("✅ Added", disabled=True)
-                
-                # Trailer Section
-                if m["trailer"]:
-                    st.video(f"https://www.youtube.com/watch?v={m['trailer']}")
-                else:
-                    st.info("No trailer available.")
 
             with col2:
                 st.markdown(f"## {m['title']} ({m['date']})")
                 st.markdown(f"⭐ {m['rating']} | ⏱ {m['runtime']} min")
-
                 st.write(m["overview"])
-
                 st.markdown("**Genres:** " + ", ".join(m["genres"]))
-                
-                # Cast Section
-                st.markdown("### Top Cast")
-                cast_cols = st.columns(5)
-                for i, (name, img) in enumerate(m["cast"]):
-                    with cast_cols[i]:
-                        st.image(img)
-                        st.caption(name)
 
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -247,9 +206,7 @@ if page == "Recommend Movies":
 # 10. WISHLIST
 # ------------------------------------------------------
 elif page == "My Wishlist":
-
     st.title("📁 Wishlist")
-
     if not st.session_state.wishlist:
         st.info("No movies saved yet.")
     else:
@@ -257,16 +214,12 @@ elif page == "My Wishlist":
             try:
                 m_id = movies_df[movies_df["title"] == title].iloc[0].movie_id
                 m = fetch_movie_details(m_id)
-
                 st.markdown("---")
-                col_w1, col_w2 = st.columns([1, 3])
-                with col_w1:
-                    st.image(m["poster"], width=150)
-                with col_w2:
-                    st.write(f"### {m['title']} ({m['date']})")
-                    if st.button(f"❌ Remove {title}", key=f"del_{m_id}"):
-                        st.session_state.wishlist.remove(title)
-                        st.rerun()
+                st.image(m["poster"], width=150)
+                st.write(f"### {m['title']} ({m['date']})")
+                if st.button(f"❌ Remove {title}"):
+                    st.session_state.wishlist.remove(title)
+                    st.rerun()
             except:
                 continue
 
@@ -274,18 +227,13 @@ elif page == "My Wishlist":
 # 11. TRENDING
 # ------------------------------------------------------
 elif page == "Trending Today":
-
     st.title("🔥 Trending Movies")
-
     url = f"https://api.themoviedb.org/3/trending/movie/day?api_key={TMDB_API}"
     data = fetch_json(url).get("results", [])[:10]
-
     for m in data:
         info = fetch_movie_details(m["id"])
-
         st.markdown(f"## {info['title']}")
-        st.image(info["poster"], width=300)
-
+        st.image(info["poster"])
         st.write(info["overview"])
         st.write(f"⭐ {info['rating']}")
         st.divider()
