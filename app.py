@@ -10,10 +10,14 @@ from urllib3.util.retry import Retry
 # ------------------------------------------------------
 # 0. Secure Config
 # ------------------------------------------------------
-TMDB_API = os.getenv("TMDB_API")  # set in environment
+# Priority: Streamlit Secrets (Cloud), then Environment Variables (Local)
+if "TMDB_API" in st.secrets:
+    TMDB_API = st.secrets["TMDB_API"]
+else:
+    TMDB_API = os.getenv("TMDB_API")
 
 if not TMDB_API:
-    st.error("TMDB_API key not found. Set environment variable.")
+    st.error("TMDB_API key not found. Please set it in Streamlit Secrets or Environment Variables.")
     st.stop()
 
 st.set_page_config(page_title="Movie Hub Pro", layout="wide")
@@ -25,8 +29,13 @@ file_id = "1C95mqxDDUNMVb0LAsgI_ReInIyd5qSBv"
 output = "similarity.pkl"
 
 if not os.path.exists(output):
-    url = f"https://drive.google.com/uc?id={file_id}"
-    gdown.download(url, output, quiet=False)
+    # Using 'id' directly in gdown is the most stable way to bypass 
+    # Google Drive's "Large File" warning without changing your logic structure.
+    try:
+        gdown.download(id=file_id, output=output, quiet=False)
+    except Exception as e:
+        st.error(f"Download failed. Please ensure the Google Drive file is shared as 'Anyone with the link'. Error: {e}")
+        st.stop()
 
 # ------------------------------------------------------
 # 2. Session State
@@ -151,10 +160,10 @@ def load_data():
 movies_df, similarity = load_data()
 
 # ------------------------------------------------------
-# 7. Guard Clause (IMPORTANT FIX)
+# 7. Guard Clause
 # ------------------------------------------------------
 if similarity is None or movies_df.empty:
-    st.error("Dataset or similarity matrix missing.")
+    st.error("Dataset or similarity matrix missing. Check your file paths or download logs.")
     st.stop()
 
 # ------------------------------------------------------
@@ -209,6 +218,12 @@ if page == "Recommend Movies":
                         st.rerun()
                 else:
                     st.button("✅ Added", disabled=True)
+                
+                # Trailer Section
+                if m["trailer"]:
+                    st.video(f"https://www.youtube.com/watch?v={m['trailer']}")
+                else:
+                    st.info("No trailer available.")
 
             with col2:
                 st.markdown(f"## {m['title']} ({m['date']})")
@@ -216,8 +231,15 @@ if page == "Recommend Movies":
 
                 st.write(m["overview"])
 
-                st.markdown("**Genres:** " +
-                            ", ".join(m["genres"]))
+                st.markdown("**Genres:** " + ", ".join(m["genres"]))
+                
+                # Cast Section
+                st.markdown("### Top Cast")
+                cast_cols = st.columns(5)
+                for i, (name, img) in enumerate(m["cast"]):
+                    with cast_cols[i]:
+                        st.image(img)
+                        st.caption(name)
 
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -237,13 +259,14 @@ elif page == "My Wishlist":
                 m = fetch_movie_details(m_id)
 
                 st.markdown("---")
-                st.image(m["poster"], width=150)
-                st.write(f"### {m['title']} ({m['date']})")
-
-                if st.button(f"❌ Remove {title}"):
-                    st.session_state.wishlist.remove(title)
-                    st.rerun()
-
+                col_w1, col_w2 = st.columns([1, 3])
+                with col_w1:
+                    st.image(m["poster"], width=150)
+                with col_w2:
+                    st.write(f"### {m['title']} ({m['date']})")
+                    if st.button(f"❌ Remove {title}", key=f"del_{m_id}"):
+                        st.session_state.wishlist.remove(title)
+                        st.rerun()
             except:
                 continue
 
@@ -261,7 +284,7 @@ elif page == "Trending Today":
         info = fetch_movie_details(m["id"])
 
         st.markdown(f"## {info['title']}")
-        st.image(info["poster"])
+        st.image(info["poster"], width=300)
 
         st.write(info["overview"])
         st.write(f"⭐ {info['rating']}")
