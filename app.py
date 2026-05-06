@@ -5,6 +5,12 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+import gdown
+
+url = "https://drive.google.com/file/d/1C95mqxDDUNMVb0LAsgI_ReInIyd5qSBv/view?usp=drive_link"
+output = "similarity.pkl"
+
+gdown.download(url, output, quiet=False)
 # ------------------------------------------------------
 # 1. Configuration & Session State
 # ------------------------------------------------------
