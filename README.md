@@ -1,3 +1,4 @@
+<img width="1850" height="874" alt="demo" src="https://github.com/user-attachments/assets/eee2d1d6-74b8-4756-871b-4a24c8e8420c" />
 # 🎬 Movie Hub — Smart Recommender & Trending Dashboard
 
 <p align="center">
